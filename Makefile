@@ -34,6 +34,8 @@ ifeq ($(VERSION), "")
     endif
 endif
 
+CHANGELOG_FILE = $(PROJECT_DIR)/CHANGELOG/CHANGELOG-$(VERSION).md
+
 ##@ General
 
 .PHONY: help
@@ -46,11 +48,11 @@ help: ## Display this help.
 
 .PHONY: release
 release: goreleaser ## Build pzip punzip archiver binary and publish.
-	@if [ ! -f CHANGELOG-$(VERSION).md ]; then \
-		echo "Error: CHANGELOG-$(VERSION).md does not exist."; \
+	@if [ ! -f $(CHANGELOG_FILE) ]; then \
+		echo "Error: $(CHANGELOG_FILE) does not exist."; \
 		exit 1; \
   	fi
-	$(GORELEASER) release --clean -f .goreleaser.yaml --release-notes CHANGELOG-$(VERSION).md
+	$(GORELEASER) release --clean -f .goreleaser.yaml --release-notes $(CHANGELOG_FILE)
 
 .PHONY: release-snapshot
 release-snapshot: goreleaser ## Build pzip punzip archiver binary.
