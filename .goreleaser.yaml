@@ -1,0 +1,71 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+
+# The lines below are called `modelines`. See `:help modeline`
+# Feel free to remove those if you don't want/need to use them.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    - go generate ./...
+
+builds:
+  - id: pzip
+    binary: pzip
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/zdz1715/go-pkg-version.version={{ .Tag }}-{{ .ShortCommit }}
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: cmd/pzip/pzip.go
+  - id: punzip
+    binary: punzip
+    ldflags:
+      - s -w -X github.com/zdz1715/go-pkg-version.version={{ .Tag }}-{{ .ShortCommit }}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: cmd/punzip/punzip.go
+
+archives:
+  - format: tar.gz
+    builds:
+      - pzip
+      - punzip
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      pzip-{{ .Tag }}-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

@@ -1,0 +1,20 @@
+{
+  "name": "openjdk-maven",
+  "postCreateCommand": "",
+  "containerEnv": {},
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "JDK_VERSION": "11.0.24_8-jdk",
+      "GO_VERSION": "1.22.6",
+    }
+  },
+  "workspaceFolder": "/workspace/pzip-test-java",
+  "workspaceMount": "source=${localWorkspaceFolder}/testing/java,target=/workspace/pzip-test-java,type=bind",
+  "shutdownAction": "stopContainer",
+  "privileged": true,
+  "capAdd": [],
+  "mounts": [
+    "source=${localWorkspaceFolder}/testdata,target=/workspace/testdata,type=bind"
+  ]
+}
