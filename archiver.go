@@ -89,7 +89,7 @@ func (o *ArchiveOptions) recurseArchiveFile(file string, link string, fn func(ab
 			return err
 		}
 		// skip temp dir
-		if filepath.Dir(absPath) == o.tempRoot {
+		if absPath == o.tempRoot || filepath.Dir(absPath) == o.tempRoot {
 			return nil
 		}
 

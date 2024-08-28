@@ -69,7 +69,8 @@ func SetupSignalContext() context.Context {
 	signal.Notify(shutdownHandler, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go func() {
 		s := <-shutdownHandler
-		_, _ = fmt.Fprintf(os.Stderr, "\nReceived signal: %s, stopping...\n", s.String())
+		_, _ = fmt.Fprintf(os.Stderr, "\nReceived signal: %s. Stopping...\n", s.String())
+		_, _ = fmt.Fprintln(os.Stderr, "Send the signal again to force a shutdown.")
 		cancel()
 		<-shutdownHandler
 		os.Exit(1) // second signal. Exit directly.

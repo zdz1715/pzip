@@ -9,6 +9,39 @@ import (
 	"testing"
 )
 
+func TestArchiver_ArchiveAll(t *testing.T) {
+
+	root := "testdata/no-symlink"
+
+	err := os.Chdir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = Archive(context.Background(), "no-symlink-test.zip", &ArchiveOptions{
+		Files: []string{
+			".",
+		},
+		SkipPath: SkipPath{
+			//Excludes: []string{"**/*.zip"},
+		},
+		Recurse:     true,
+		Concurrency: runtime.GOMAXPROCS(0),
+		Level:       -1,
+		After: func(hdr *FileHeader) {
+			md := "stored"
+			if hdr.Method == zip.Deflate {
+				md = "deflated"
+			}
+			_, _ = fmt.Fprintf(os.Stdout, "  adding: %s (%s)\n", hdr.Name, md)
+		},
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestArchiver_Archive(t *testing.T) {
 
 	root := "testdata"
