@@ -46,7 +46,11 @@ help: ## Display this help.
 
 .PHONY: release
 release: goreleaser ## Build pzip punzip archiver binary and publish.
-	$(GORELEASER) release --clean -f .goreleaser.yaml --release-notes CHANGELOG.md
+	@if [ -f CHANGELOG-$(VERSION).md ]; then \
+		echo "Error: CHANGELOG-$(VERSION).md does not exist."; \
+		exit 1; \
+  	fi
+	$(GORELEASER) release --clean -f .goreleaser.yaml --release-notes CHANGELOG-$(VERSION).md
 
 .PHONY: release-snapshot
 release-snapshot: goreleaser ## Build pzip punzip archiver binary.
