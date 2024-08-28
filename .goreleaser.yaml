@@ -15,6 +15,11 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 
+release:
+  github:
+    owner: zdz1715
+    name: pzip
+
 builds:
   - id: pzip
     binary: pzip

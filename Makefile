@@ -43,9 +43,15 @@ help: ## Display this help.
 .DEFAULT_GOAL := help
 
 ##@ Build
+
 .PHONY: release
-release: goreleaser ## Build pzip punzip archiver binary.
-	$(GORELEASER) release --snapshot --clean -f .goreleaser.yaml
+release: goreleaser ## Build pzip punzip archiver binary and publish.
+	$(GORELEASER) release --clean -f .goreleaser.yaml
+
+.PHONY: release-snapshot
+release-snapshot: goreleaser ## Build pzip punzip archiver binary.
+	$(GORELEASER) release --skip publish --snapshot --clean -f .goreleaser.yaml
+
 
 ##@ Install
 GORELEASER = $(BIN_DIR)/goreleaser
