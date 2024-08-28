@@ -46,7 +46,7 @@ help: ## Display this help.
 
 .PHONY: release
 release: goreleaser ## Build pzip punzip archiver binary and publish.
-	$(GORELEASER) release --clean -f .goreleaser.yaml
+	$(GORELEASER) release --clean -f .goreleaser.yaml --release-notes CHANGELOG.md
 
 .PHONY: release-snapshot
 release-snapshot: goreleaser ## Build pzip punzip archiver binary.
