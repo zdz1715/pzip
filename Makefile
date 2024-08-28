@@ -46,7 +46,7 @@ help: ## Display this help.
 
 .PHONY: release
 release: goreleaser ## Build pzip punzip archiver binary and publish.
-	@if [ -f CHANGELOG-$(VERSION).md ]; then \
+	@if [ ! -f CHANGELOG-$(VERSION).md ]; then \
 		echo "Error: CHANGELOG-$(VERSION).md does not exist."; \
 		exit 1; \
   	fi
