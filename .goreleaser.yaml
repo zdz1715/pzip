@@ -20,6 +20,9 @@ release:
     owner: zdz1715
     name: pzip
 
+checksum:
+  name_template: "pzip_{{ .Tag }}_checksums.txt"
+
 builds:
   - id: pzip
     binary: pzip
