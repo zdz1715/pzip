@@ -52,18 +52,17 @@ release: goreleaser ## Build pzip punzip archiver binary and publish.
 		echo "Error: $(CHANGELOG_FILE) does not exist."; \
 		exit 1; \
   	fi
-	$(GORELEASER) release --clean -f .goreleaser.yaml --release-notes $(CHANGELOG_FILE)
+	goreleaser release --clean -f .goreleaser.yaml --release-notes $(CHANGELOG_FILE)
 
 .PHONY: release-snapshot
 release-snapshot: goreleaser ## Build pzip punzip archiver binary.
-	$(GORELEASER) release --skip publish --snapshot --clean -f .goreleaser.yaml
+	goreleaser release --skip publish --snapshot --clean -f .goreleaser.yaml
 
 
 ##@ Install
-GORELEASER = $(BIN_DIR)/goreleaser
 .PHONY: goreleaser
 goreleaser: ## Download goreleaser locally if necessary.
-	$(call go-install-tool,$(GORELEASER),github.com/goreleaser/goreleaser/v2@latest)
+	$(call go-install-tool-global,goreleaser,github.com/goreleaser/goreleaser/v2@latest)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 
