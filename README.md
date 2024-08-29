@@ -15,6 +15,11 @@
 ### 下载二进制
 [下载地址](https://github.com/zdz1715/pzip/releases/latest)
 
+### 使用 GO 安装
+```shell
+go install github.com/zdz1715/pzip/cmd/pzip@latest
+go install github.com/zdz1715/pzip/cmd/punzip@latest
+```
 ### 从源码构建
 ```shell
 git clone https://github.com/zdz1715/pzip.git
