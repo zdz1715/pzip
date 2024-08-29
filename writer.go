@@ -71,7 +71,11 @@ func (h *header) isZip64() bool {
 }
 
 func (h *header) prepare() {
+	//headerPrepareByAppend(h)
+	headerPrepareByWriteBuf(h)
+}
 
+func headerPrepareByAppend(h *header) {
 	h.offset32 = uint32(h.offset)
 	h.compressedSize32 = h.CompressedSize
 	h.uncompressedSize32 = h.UncompressedSize
@@ -100,6 +104,42 @@ func (h *header) prepare() {
 		zip64buf = binary.LittleEndian.AppendUint16(zip64buf, uint16(len(zip64bufData)))
 		zip64buf = append(zip64buf, zip64bufData...)
 		h.Extra = append(h.Extra, zip64buf...)
+	}
+}
+
+func headerPrepareByWriteBuf(h *header) {
+	h.offset32 = uint32(h.offset)
+	h.compressedSize32 = h.CompressedSize
+	h.uncompressedSize32 = h.UncompressedSize
+
+	if h.isZip64() || h.offset >= uint32max {
+
+		h.ReaderVersion = zipVersion45
+
+		var zip64buf [28]byte // 2x uint16 + 3x uint64
+		eb := writeBuf(zip64buf[:])
+		eb.uint16(zip64ExtraID)
+
+		if h.isZip64() && h.offset >= uint32max {
+			eb.uint16(24) // size = 3x uint64
+			eb.uint64(h.UncompressedSize64)
+			eb.uint64(h.CompressedSize64)
+			eb.uint64(h.offset)
+			h.uncompressedSize32 = uint32max
+			h.compressedSize32 = uint32max
+			h.offset32 = uint32max
+		} else if h.isZip64() {
+			eb.uint16(16) // size = 2x uint64
+			eb.uint64(h.UncompressedSize64)
+			eb.uint64(h.CompressedSize64)
+			h.uncompressedSize32 = uint32max
+			h.compressedSize32 = uint32max
+		} else if h.offset >= uint32max {
+			eb.uint16(8) // size = 1x uint64
+			eb.uint64(h.offset)
+			h.offset32 = uint32max
+		}
+		h.Extra = append(h.Extra, zip64buf[:len(zip64buf)-len(eb)]...)
 	}
 }
 
