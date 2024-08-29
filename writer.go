@@ -82,13 +82,10 @@ func (h *header) prepare() {
 
 		// 3x uint64
 		zip64bufData := make([]byte, 0, 24)
-		if h.UncompressedSize64 >= uint32max {
+		if h.isZip64() {
 			zip64bufData = binary.LittleEndian.AppendUint64(zip64bufData, h.UncompressedSize64)
-			h.uncompressedSize32 = uint32max
-		}
-
-		if h.CompressedSize64 >= uint32max {
 			zip64bufData = binary.LittleEndian.AppendUint64(zip64bufData, h.CompressedSize64)
+			h.uncompressedSize32 = uint32max
 			h.compressedSize32 = uint32max
 		}
 
