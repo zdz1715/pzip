@@ -41,7 +41,7 @@ builds:
   - id: punzip
     binary: punzip
     ldflags:
-      - s -w -X github.com/zdz1715/go-pkg-version.version={{ .Tag }}-{{ .ShortCommit }}
+      - -s -w -X github.com/zdz1715/go-pkg-version.version={{ .Tag }}-{{ .ShortCommit }}
     env:
       - CGO_ENABLED=0
     goos:
