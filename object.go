@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/klauspost/compress/flate"
+	"github.com/zdz1715/pzip/flate"
 )
 
 const (
@@ -32,7 +32,7 @@ type Object struct {
 	Info os.FileInfo
 
 	compressedData  *bytes.Buffer
-	compressor      *flate.Writer
+	compressor      flate.Writer
 	header          *FileHeader
 	overflow        *os.File
 	written         uint64
@@ -60,16 +60,16 @@ func NewObjectPool() *ObjectPool {
 	return NewObjectPoolSize(defaultBufSize)
 }
 
-func (o *ObjectPool) New(path string, info os.FileInfo, level int) (*Object, error) {
+func (o *ObjectPool) New(path string, info os.FileInfo, level int, fw ...flate.NewWriterFunc) (*Object, error) {
 	obj := o.pool.Get().(*Object)
-	return obj, obj.Reset(path, info, level)
+	return obj, obj.Reset(path, info, level, fw...)
 }
 
 func (o *ObjectPool) Put(obj *Object) {
 	o.pool.Put(obj)
 }
 
-func (o *Object) Reset(path string, info os.FileInfo, level int) error {
+func (o *Object) Reset(path string, info os.FileInfo, level int, fw ...flate.NewWriterFunc) error {
 	if path == "" || info == nil {
 		return errors.New("invalid path or info")
 	}
@@ -94,8 +94,13 @@ func (o *Object) Reset(path string, info os.FileInfo, level int) error {
 		return err
 	}
 	hdr.Name = HeaderName(path)
+
 	if o.compressor == nil {
-		o.compressor, err = flate.NewWriter(o, level)
+		if len(fw) > 0 && fw[0] != nil {
+			o.compressor, err = fw[0](o, level)
+		} else {
+			o.compressor, err = flate.NewFastWriter(o, level)
+		}
 		if err != nil {
 			return err
 		}

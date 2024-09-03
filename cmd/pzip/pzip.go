@@ -4,8 +4,11 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
+
+	"github.com/zdz1715/pzip/flate"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -77,6 +80,9 @@ func RunZip(ctx context.Context, opts *Options, name string, paths []string) err
 	}
 
 	return pzip.Archive(ctx, name, &pzip.ArchiveOptions{
+		NewCompressor: func(w io.Writer, level int) (flate.Writer, error) {
+			return flate.NewFastWriter(w, level)
+		},
 		Concurrency: opts.Concurrency,
 		Files:       paths,
 		SkipPath: pzip.SkipPath{

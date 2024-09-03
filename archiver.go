@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/zdz1715/pzip/flate"
 )
 
 const (
@@ -21,13 +23,14 @@ type ArchiveOptions struct {
 
 	tempRoot string
 
-	Files       []string
-	Level       int
-	Concurrency int
-	Comment     string
-	Dereference bool
-	Recurse     bool
-	After       func(hdr *FileHeader)
+	NewCompressor flate.NewWriterFunc
+	Files         []string
+	Level         int
+	Concurrency   int
+	Comment       string
+	Dereference   bool
+	Recurse       bool
+	After         func(hdr *FileHeader)
 }
 
 func (o *ArchiveOptions) filterFile() {
@@ -63,7 +66,7 @@ func (o *ArchiveOptions) archiveFile(fileAbsPath, file string, fn func(absPath s
 		return err, nil
 	}
 
-	obj, err := DefaultObjectPool.New(file, info, o.Level)
+	obj, err := DefaultObjectPool.New(file, info, o.Level, o.NewCompressor)
 	if err != nil {
 		return err, nil
 	}
@@ -125,7 +128,7 @@ func (o *ArchiveOptions) recurseArchiveFile(file string, link string, fn func(ab
 			return nil
 		}
 
-		obj, err := DefaultObjectPool.New(pathOverride, info, o.Level)
+		obj, err := DefaultObjectPool.New(pathOverride, info, o.Level, o.NewCompressor)
 		if err != nil {
 			return err
 		}
@@ -144,6 +147,12 @@ func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error)
 
 	if err = opts.Validate(); err != nil {
 		return
+	}
+
+	if opts.NewCompressor == nil {
+		opts.NewCompressor = func(w io.Writer, level int) (flate.Writer, error) {
+			return flate.NewFastWriter(w, level)
+		}
 	}
 
 	absZipPath, err := filepath.Abs(path)
@@ -192,6 +201,7 @@ func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error)
 			_ = params.Close()
 			DefaultObjectPool.Put(params)
 		}()
+
 		if writeErr := params.Archive(w); writeErr != nil {
 			return writeErr
 		}

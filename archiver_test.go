@@ -18,10 +18,13 @@ func TestArchiver_ArchiveAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Archive(context.Background(), "no-symlink-test.zip", &ArchiveOptions{
+	err = Archive(context.Background(), "../no-symlink-test.zip", &ArchiveOptions{
 		Files: []string{
 			".",
 		},
+		//NewCompressor: func(w io.Writer, level int) (flate.Writer, error) {
+		//	return flate.NewWriter(w, level)
+		//},
 		SkipPath: SkipPath{
 			//Excludes: []string{"**/*.zip"},
 		},
