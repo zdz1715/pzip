@@ -8,22 +8,23 @@ import (
 	"os"
 	"runtime"
 
+	goappversion "github.com/zdz1715/go-app-version"
 	"github.com/zdz1715/pzip/flate"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	gopkgversion "github.com/zdz1715/go-pkg-version"
 	"github.com/zdz1715/pzip"
 )
 
 type Options struct {
 	Recursive     bool
+	NoDereference bool
+	Stdlib        bool
+	Quiet         bool
 	Excludes      []string
 	Includes      []string
-	Quiet         bool
 	Concurrency   int
 	Comment       string
-	NoDereference bool
 	Level         int
 }
 
@@ -32,14 +33,15 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 	flags.IntVar(&o.Level, "level", -1, "指定压缩级别，范围 0-9")
 	flags.BoolVarP(&o.Recursive, "recursive", "r", true, "递归压缩目录中的文件")
 	flags.BoolVarP(&o.Quiet, "quiet", "q", false, "启用静默模式，不输出日志信息（但仍显示错误信息）")
-	flags.BoolVarP(&o.NoDereference, "no-dereference", "y", false, "将符号链接存储为链接，而不是链接指向的文件。")
-	flags.StringSliceVarP(&o.Excludes, "exclude", "x", o.Excludes, "排除匹配的文件，支持多个排除规则，如：-x '*.log'，-x '*.tmp'")
+	flags.BoolVarP(&o.NoDereference, "no-dereference", "y", false, "将符号链接存储为链接，而不是链接指向的文件")
+	flags.BoolVar(&o.Stdlib, "stdlib", false, "使用标准库的deflate算法")
+	flags.StringSliceVarP(&o.Excludes, "exclude", "x", o.Excludes, "排除匹配的文件，支持多个排除规则，如：-x '*.log' -x '*.tmp'")
 	flags.StringSliceVarP(&o.Includes, "include", "i", o.Includes, "仅包含匹配的文件，支持多个包含规则，如：-i '*.yaml' -i 'README.md'")
 	flags.StringVarP(&o.Comment, "comment", "z", "", "为整个 ZIP 文件添加注释")
 }
 
 func NewPzipCommand(ctx context.Context) *cobra.Command {
-	ver := gopkgversion.NewVersionInfo()
+	ver := goappversion.Get()
 	opts := &Options{}
 	cmd := &cobra.Command{
 		Use:           "pzip [flags] file[.zip] [file...]",
@@ -79,12 +81,20 @@ func RunZip(ctx context.Context, opts *Options, name string, paths []string) err
 		after = nil
 	}
 
+	wf := func(w io.Writer, level int) (flate.Writer, error) {
+		return flate.NewFastWriter(w, level)
+	}
+
+	if opts.Stdlib {
+		wf = func(w io.Writer, level int) (flate.Writer, error) {
+			return flate.NewWriter(w, level)
+		}
+	}
+
 	return pzip.Archive(ctx, name, &pzip.ArchiveOptions{
-		NewCompressor: func(w io.Writer, level int) (flate.Writer, error) {
-			return flate.NewFastWriter(w, level)
-		},
-		Concurrency: opts.Concurrency,
-		Files:       paths,
+		NewCompressor: wf,
+		Concurrency:   opts.Concurrency,
+		Files:         paths,
 		SkipPath: pzip.SkipPath{
 			Includes: opts.Includes,
 			Excludes: opts.Excludes,

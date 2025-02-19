@@ -3,12 +3,12 @@ module github.com/zdz1715/pzip
 go 1.22
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.6.1
-	github.com/klauspost/compress v1.17.9
+	github.com/bmatcuk/doublestar/v4 v4.8.1
+	github.com/klauspost/compress v1.17.11
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
-	github.com/zdz1715/go-pkg-version v1.0.0
+	github.com/spf13/cobra v1.9.1
+	github.com/spf13/pflag v1.0.6
+	github.com/zdz1715/go-app-version v0.0.0-20250219032059-2180b4cc427d
 )
 
 require (

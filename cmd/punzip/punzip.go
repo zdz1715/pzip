@@ -15,7 +15,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	gopkgversion "github.com/zdz1715/go-pkg-version"
+	goappversion "github.com/zdz1715/go-app-version"
 	"github.com/zdz1715/pzip"
 )
 
@@ -36,12 +36,12 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Quiet, "quiet", "q", false, "启用静默模式，不输出日志信息（但仍显示错误信息）")
 	flags.StringVarP(&o.Dir, "dir", "d", "", "指定解压目标目录")
 	flags.BoolVarP(&o.List, "list", "l", false, "列出压缩包内的文件清单")
-	flags.StringSliceVarP(&o.Excludes, "exclude", "x", o.Excludes, "排除匹配的文件，支持多个排除规则，如：-x '*.log'，-x '*.tmp'")
+	flags.StringSliceVarP(&o.Excludes, "exclude", "x", o.Excludes, "排除匹配的文件，支持多个排除规则，如：-x '*.log' -x '*.tmp'")
 	flags.StringSliceVarP(&o.Includes, "include", "i", o.Includes, "仅解压匹配的文件，支持多个包含规则，如：-i '*.yaml'，-i 'README.md'")
 }
 
 func NewUnzipCommand(ctx context.Context) *cobra.Command {
-	ver := gopkgversion.NewVersionInfo()
+	ver := goappversion.Get()
 	opts := &Options{}
 	cmd := &cobra.Command{
 		Use:           "punzip [flags] file[.zip]",
