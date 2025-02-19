@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime"
 
-	goappversion "github.com/zdz1715/go-app-version"
+	"github.com/zdz1715/appversion"
 	"github.com/zdz1715/pzip/flate"
 
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 }
 
 func NewPzipCommand(ctx context.Context) *cobra.Command {
-	ver := goappversion.Get()
+	ver := appversion.Get()
 	opts := &Options{}
 	cmd := &cobra.Command{
 		Use:           "pzip [flags] file[.zip] [file...]",

@@ -8,7 +8,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/zdz1715/go-app-version v0.0.0-20250219080738-c563da6cd038
+	github.com/zdz1715/appversion v0.0.0-20250219123807-77c677e0f34e
 )
 
 require (

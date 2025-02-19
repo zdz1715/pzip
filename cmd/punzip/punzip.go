@@ -15,7 +15,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	goappversion "github.com/zdz1715/go-app-version"
+	"github.com/zdz1715/appversion"
 	"github.com/zdz1715/pzip"
 )
 
@@ -41,7 +41,7 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 }
 
 func NewUnzipCommand(ctx context.Context) *cobra.Command {
-	ver := goappversion.Get()
+	ver := appversion.Get()
 	opts := &Options{}
 	cmd := &cobra.Command{
 		Use:           "punzip [flags] file[.zip]",

@@ -29,7 +29,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/zdz1715/go-app-version.version={{ .Tag }}
+      - -s -w -X github.com/zdz1715/appversion.version={{ .Tag }}
     goos:
       - linux
       - windows
@@ -41,7 +41,7 @@ builds:
   - id: punzip
     binary: punzip
     ldflags:
-      - -s -w -X github.com/zdz1715/go-app-version.version={{ .Tag }}
+      - -s -w -X github.com/zdz1715/appversion.version={{ .Tag }}
     env:
       - CGO_ENABLED=0
     goos:
