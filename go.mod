@@ -3,7 +3,7 @@ module github.com/zdz1715/pzip
 go 1.22
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.8.1
+	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/klauspost/compress v1.17.11
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.9.1

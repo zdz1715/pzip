@@ -47,6 +47,9 @@ func (o *ArchiveOptions) filterFile() {
 }
 
 func (o *ArchiveOptions) Validate() error {
+	if o == nil {
+		return fmt.Errorf("archiveOptions is nil")
+	}
 	o.filterFile()
 	if len(o.Files) == 0 {
 		return errors.New("no files to archive")
@@ -140,11 +143,7 @@ func (o *ArchiveOptions) recurseArchiveFile(file string, link string, fn func(ab
 	return walkErr, submitErr
 }
 
-func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error) {
-	if opts == nil {
-		return fmt.Errorf("archive options must not be nil")
-	}
-
+func ArchiveToWriter(ctx context.Context, writer io.Writer, opts *ArchiveOptions) (err error) {
 	if err = opts.Validate(); err != nil {
 		return
 	}
@@ -155,46 +154,13 @@ func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error)
 		}
 	}
 
-	absZipPath, err := filepath.Abs(path)
-	if err != nil {
-		return
-	}
-
-	opts.tempRoot, err = os.MkdirTemp(filepath.Dir(absZipPath), ".pzip-")
-	if err != nil {
-		return err
-	}
-
-	defer os.RemoveAll(opts.tempRoot)
-
-	tmpFile, err := os.CreateTemp(opts.tempRoot, filepath.Base(absZipPath))
-	if err != nil {
-		return
-	}
-
-	// close tmp file and rename
-	defer func() {
-		if err == nil {
-			if closeErr := tmpFile.Close(); closeErr != nil {
-				err = closeErr
-			} else {
-				if renameErr := os.Rename(tmpFile.Name(), absZipPath); renameErr != nil {
-					err = renameErr
-				}
-			}
-		} else {
-			_ = tmpFile.Close()
-			_ = os.Remove(tmpFile.Name())
-		}
-	}()
-
-	w := NewWriter(tmpFile)
-	// Execute before tmpFile close
+	w := NewWriter(writer)
 	defer func() {
 		if closeErr := w.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("header end write: %w", closeErr))
+			err = errors.Join(err, fmt.Errorf("failed close writer: %w", closeErr))
 		}
 	}()
+
 	// sequential write
 	writeWorker := NewFailFastWorker[Object](func(params *Object) error {
 		defer func() {
@@ -244,9 +210,9 @@ func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error)
 			return err
 		}
 		err, submitErr = opts.archiveFile(fileAbsPath, file, func(absPtah string, obj *Object) error {
-			if absPtah == absZipPath {
-				return nil
-			}
+			//if absPtah == absZipPath {
+			//	return nil
+			//}
 			return compressWorker.Submit(obj)
 		})
 
@@ -269,6 +235,43 @@ func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error)
 	}
 
 	return
+}
+
+func Archive(ctx context.Context, path string, opts *ArchiveOptions) (err error) {
+	absZipPath, err := filepath.Abs(path)
+	if err != nil {
+		return
+	}
+
+	opts.tempRoot, err = os.MkdirTemp(filepath.Dir(absZipPath), ".pzip-")
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(opts.tempRoot)
+
+	tmpFile, err := os.CreateTemp(opts.tempRoot, filepath.Base(absZipPath))
+	if err != nil {
+		return
+	}
+
+	// close tmp file and rename
+	defer func() {
+		if err == nil {
+			if closeErr := tmpFile.Close(); closeErr != nil {
+				err = closeErr
+			} else {
+				if renameErr := os.Rename(tmpFile.Name(), absZipPath); renameErr != nil {
+					err = renameErr
+				}
+			}
+		} else {
+			_ = tmpFile.Close()
+			_ = os.Remove(tmpFile.Name())
+		}
+	}()
+
+	return ArchiveToWriter(ctx, tmpFile, opts)
 }
 
 type ExtractTarget struct {
