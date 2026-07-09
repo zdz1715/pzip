@@ -26,6 +26,7 @@ type Options struct {
 	Concurrency   int
 	Comment       string
 	StripPrefix   string
+	AddPrefix     string
 	Level         int
 }
 
@@ -40,6 +41,7 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 	flags.StringSliceVarP(&o.Includes, "include", "i", o.Includes, "仅包含匹配的文件，支持多个包含规则，如：-i '*.yaml' -i 'README.md'")
 	flags.StringVarP(&o.Comment, "comment", "z", "", "为整个 ZIP 文件添加注释")
 	flags.StringVar(&o.StripPrefix, "strip-prefix", "", "从压缩包内路径中去除指定前缀，如：--strip-prefix a/b")
+	flags.StringVar(&o.AddPrefix, "add-prefix", "", "为压缩包内路径增加指定前缀，如：--add-prefix release")
 }
 
 func NewPzipCommand(ctx context.Context) *cobra.Command {
@@ -98,6 +100,7 @@ func RunZip(ctx context.Context, opts *Options, name string, paths []string) err
 		Concurrency: opts.Concurrency,
 		Sources:     paths,
 		StripPrefix: opts.StripPrefix,
+		AddPrefix:   opts.AddPrefix,
 		Filter:      pzip.NewFilter(opts.Includes, opts.Excludes),
 		Progress: func(event pzip.CompressEvent) {
 			if after != nil {

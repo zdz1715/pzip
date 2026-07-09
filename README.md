@@ -43,6 +43,7 @@ pzip:
   -i, --include pattern    只包含匹配条目
   -z, --comment text       写入 ZIP 注释
       --strip-prefix path  去除压缩包内路径前缀
+      --add-prefix path    增加压缩包内路径前缀
       --concurrency n      并发数
       --level n            压缩级别，范围 -2 到 9
       --stdlib             使用标准库 deflate
@@ -67,6 +68,7 @@ err := pzip.Compress(ctx, "archive.zip", &pzip.CompressOptions{
     Sources:     []string{"dir", "README.md"},
     Recursive:   true,
     StripPrefix: "dir",
+    AddPrefix:   "release",
     Filter:      pzip.NewFilter(nil, []string{"**/*.log"}),
     Comment:     "release files",
 })

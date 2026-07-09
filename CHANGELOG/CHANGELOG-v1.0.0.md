@@ -13,6 +13,7 @@ v1.0.0 是 pzip 的首个稳定版本，包含一次面向 Go API、命令行和
 ### 命令行
 
 - `pzip` 新增 `--strip-prefix`，用于去除压缩包内路径前缀，对应 `CompressOptions.StripPrefix`。
+- `pzip` 新增 `--add-prefix`，用于增加压缩包内路径前缀，对应 `CompressOptions.AddPrefix`。
 
 ### 依赖与构建
 

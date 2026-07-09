@@ -25,6 +25,7 @@ type CompressEvent struct {
 type CompressOptions struct {
 	Sources     []string
 	StripPrefix string
+	AddPrefix   string
 	Concurrency int
 	Level       int
 	Comment     string
@@ -354,6 +355,9 @@ func (cfg *compressConfig) entryName(path string) (string, bool, error) {
 			return "", false, fmt.Errorf("%q is not under strip prefix %q", path, cfg.StripPrefix)
 		}
 		path = rel
+	}
+	if cfg.AddPrefix != "" {
+		path = filepath.Join(filepath.Clean(cfg.AddPrefix), path)
 	}
 	name := HeaderName(path)
 	return name, name != "" && name != ".", nil

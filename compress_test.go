@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestCompressStripPrefixAndComment(t *testing.T) {
+func TestCompressStripPrefixAddPrefixAndComment(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "a", "b", "c"), 0755); err != nil {
 		t.Fatal(err)
@@ -25,6 +25,7 @@ func TestCompressStripPrefixAndComment(t *testing.T) {
 	err := Compress(context.Background(), dst, &CompressOptions{
 		Sources:     []string{filepath.Join(root, "a", "b", "c")},
 		StripPrefix: filepath.Join(root, "a", "b"),
+		AddPrefix:   "release",
 		Recursive:   true,
 		Concurrency: 2,
 		Level:       -1,
@@ -49,7 +50,7 @@ func TestCompressStripPrefixAndComment(t *testing.T) {
 		names = append(names, f.Name)
 	}
 	slices.Sort(names)
-	want := []string{"c/", "c/one.txt", "c/two.txt"}
+	want := []string{"release/c/", "release/c/one.txt", "release/c/two.txt"}
 	if !slices.Equal(names, want) {
 		t.Fatalf("entries = %v, want %v", names, want)
 	}
