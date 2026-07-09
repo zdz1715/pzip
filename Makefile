@@ -62,7 +62,7 @@ release-snapshot: goreleaser ## Build pzip punzip archiver binary.
 ##@ Install
 .PHONY: goreleaser
 goreleaser: ## Download goreleaser locally if necessary.
-	$(call go-install-tool-global,goreleaser,github.com/goreleaser/goreleaser/v2@latest)
+	$(call go-install-tool-global,goreleaser,github.com/goreleaser/goreleaser/v2@v2.12.7)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 
