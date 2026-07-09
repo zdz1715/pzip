@@ -9,93 +9,103 @@ import (
 	"testing"
 )
 
+type benchmarkDataset struct {
+	name string
+	root string
+}
+
 func BenchmarkCompress(b *testing.B) {
-	sourceRoot := createBenchmarkTree(b, 64, 256<<10)
-	outRoot := b.TempDir()
+	for _, dataset := range createBenchmarkDatasets(b) {
+		dataset := dataset
+		b.Run(dataset.name, func(b *testing.B) {
+			outRoot := b.TempDir()
 
-	b.Run("sequential-baseline", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			dst := filepath.Join(outRoot, fmt.Sprintf("seq-%d.zip", i))
-			if err := compressSequentialForBenchmark(dst, sourceRoot); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
+			b.Run("sequential-baseline", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					dst := filepath.Join(outRoot, fmt.Sprintf("seq-%d.zip", i))
+					if err := compressSequentialForBenchmark(dst, dataset.root); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
 
-	b.Run("parallel-ready-no-pool", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			dst := filepath.Join(outRoot, fmt.Sprintf("parallel-no-pool-%d.zip", i))
-			if err := compressNoPoolForBenchmark(dst, sourceRoot); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	b.Run("parallel-ready-pooled", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			dst := filepath.Join(outRoot, fmt.Sprintf("parallel-pooled-%d.zip", i))
-			if err := Compress(context.Background(), dst, &CompressOptions{
-				Sources:     []string{sourceRoot},
-				StripPrefix: filepath.Dir(sourceRoot),
-				Recursive:   true,
-				Concurrency: runtime.GOMAXPROCS(0),
-				Level:       -1,
-			}); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
+			b.Run("parallel", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					dst := filepath.Join(outRoot, fmt.Sprintf("parallel-%d.zip", i))
+					if err := Compress(context.Background(), dst, benchmarkCompressOptions(dataset.root, runtime.GOMAXPROCS(0))); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		})
+	}
 }
 
 func BenchmarkExtract(b *testing.B) {
-	sourceRoot := createBenchmarkTree(b, 64, 256<<10)
-	archive := filepath.Join(b.TempDir(), "bench.zip")
-	if err := Compress(context.Background(), archive, &CompressOptions{
+	for _, dataset := range createBenchmarkDatasets(b) {
+		dataset := dataset
+		b.Run(dataset.name, func(b *testing.B) {
+			archive := filepath.Join(b.TempDir(), "bench.zip")
+			if err := Compress(context.Background(), archive, benchmarkCompressOptions(dataset.root, runtime.GOMAXPROCS(0))); err != nil {
+				b.Fatal(err)
+			}
+
+			outRoot := b.TempDir()
+
+			b.Run("sequential-baseline", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					dst := filepath.Join(outRoot, fmt.Sprintf("extract-seq-%d", i))
+					if err := Extract(context.Background(), archive, &ExtractOptions{
+						Destination: dst,
+						Concurrency: 1,
+					}); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+
+			b.Run("parallel", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					dst := filepath.Join(outRoot, fmt.Sprintf("extract-parallel-%d", i))
+					if err := Extract(context.Background(), archive, &ExtractOptions{
+						Destination: dst,
+						Concurrency: runtime.GOMAXPROCS(0),
+					}); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		})
+	}
+}
+
+func createBenchmarkDatasets(b *testing.B) []benchmarkDataset {
+	b.Helper()
+	return []benchmarkDataset{
+		{name: "many-small", root: createBenchmarkTree(b, "many-small", 1024, 4<<10)},
+		{name: "medium-files", root: createBenchmarkTree(b, "medium-files", 64, 256<<10)},
+		{name: "large-files", root: createBenchmarkTree(b, "large-files", 4, 16<<20)},
+	}
+}
+
+func benchmarkCompressOptions(sourceRoot string, concurrency int) *CompressOptions {
+	return &CompressOptions{
 		Sources:     []string{sourceRoot},
 		StripPrefix: filepath.Dir(sourceRoot),
 		Recursive:   true,
-		Concurrency: runtime.GOMAXPROCS(0),
+		Concurrency: concurrency,
 		Level:       -1,
-	}); err != nil {
-		b.Fatal(err)
 	}
-
-	outRoot := b.TempDir()
-
-	b.Run("sequential-baseline", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			dst := filepath.Join(outRoot, fmt.Sprintf("extract-seq-%d", i))
-			if err := Extract(context.Background(), archive, &ExtractOptions{
-				Destination: dst,
-				Concurrency: 1,
-			}); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	b.Run("parallel", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			dst := filepath.Join(outRoot, fmt.Sprintf("extract-parallel-%d", i))
-			if err := Extract(context.Background(), archive, &ExtractOptions{
-				Destination: dst,
-				Concurrency: runtime.GOMAXPROCS(0),
-			}); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
 }
 
-func createBenchmarkTree(b *testing.B, files int, size int) string {
+func createBenchmarkTree(b *testing.B, name string, files int, size int) string {
 	b.Helper()
 
-	root := filepath.Join(b.TempDir(), "src")
+	root := filepath.Join(b.TempDir(), name)
 	if err := os.MkdirAll(root, 0755); err != nil {
 		b.Fatal(err)
 	}
@@ -150,14 +160,9 @@ func compressSequentialForBenchmark(dst string, sourceRoot string) (err error) {
 	}()
 
 	cfg := &compressConfig{
-		CompressOptions: &CompressOptions{
-			Sources:     []string{sourceRoot},
-			StripPrefix: filepath.Dir(sourceRoot),
-			Recursive:   true,
-			Concurrency: 1,
-			Level:       -1,
-		},
-		tempRoot: tempRoot,
+		CompressOptions: benchmarkCompressOptions(sourceRoot, 1),
+		tempRoot:        tempRoot,
+		objects:         newObjectPool(),
 	}
 	cfg.setDefaults()
 
@@ -166,56 +171,13 @@ func compressSequentialForBenchmark(dst string, sourceRoot string) (err error) {
 		if err != nil {
 			return err
 		}
-		defer obj.Close()
+		defer func() {
+			_ = obj.Close()
+			cfg.release(obj)
+		}()
 		if err := obj.Compress(); err != nil {
 			return err
 		}
 		return obj.WriteTo(zw)
-	})
-}
-
-func compressNoPoolForBenchmark(dst string, sourceRoot string) (err error) {
-	opts := &CompressOptions{
-		Sources:     []string{sourceRoot},
-		StripPrefix: filepath.Dir(sourceRoot),
-		Recursive:   true,
-		Concurrency: runtime.GOMAXPROCS(0),
-		Level:       -1,
-	}
-	if err := opts.validate(); err != nil {
-		return err
-	}
-	opts.setDefaults()
-
-	absZipPath, err := filepath.Abs(dst)
-	if err != nil {
-		return err
-	}
-	tempRoot, err := os.MkdirTemp(filepath.Dir(absZipPath), ".pzip-")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tempRoot)
-
-	tmpFile, err := os.CreateTemp(tempRoot, filepath.Base(absZipPath))
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == nil {
-			if closeErr := tmpFile.Close(); closeErr != nil {
-				err = closeErr
-			} else if renameErr := os.Rename(tmpFile.Name(), absZipPath); renameErr != nil {
-				err = renameErr
-			}
-		} else {
-			_ = tmpFile.Close()
-			_ = os.Remove(tmpFile.Name())
-		}
-	}()
-
-	return compressToWriter(context.Background(), tmpFile, &compressConfig{
-		CompressOptions: opts,
-		tempRoot:        tempRoot,
 	})
 }
