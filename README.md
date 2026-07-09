@@ -1,40 +1,139 @@
 # pzip
-高效并发的 ZIP 文件压缩与解压工具，兼容 PKZIP 2.04g 版本。
 
-参考文档：[PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)
+pzip 是一个并发 ZIP 压缩与解压工具，提供命令行程序 `pzip`、`punzip`，也可以作为 Go 包使用。
 
 ## 特性
+- 多协程支持：快速并行处理 ZIP 文件的压缩与解压
+- ZIP64 支持：处理大于 4GB 的文件及超大档案
+- 兼容 PKZIP 2.04g 版本：确保与传统 ZIP 工具的兼容性
+- 支持原生参数：兼容 zip 和 unzip 的常用命令行参数，易于集成到现有工作流中
 
-- **多协程支持**：快速并行处理 ZIP 文件的压缩与解压
-- **ZIP64 支持**：处理大于 4GB 的文件及超大档案
-- **兼容 PKZIP 2.04g 版本**：确保与传统 ZIP 工具的兼容性
-- **支持原生参数**：兼容 `zip` 和 `unzip` 的常用命令行参数，易于集成到现有工作流中
+## 安装
 
-## 使用
+下载二进制文件：
 
-### 下载二进制
-[下载地址](https://github.com/zdz1715/pzip/releases/latest)
+[Releases](https://github.com/zdz1715/pzip/releases/latest)
 
-### 使用 GO 安装
-```shell
+使用 Go 安装：
+
+```sh
 go install github.com/zdz1715/pzip/cmd/pzip@latest
 go install github.com/zdz1715/pzip/cmd/punzip@latest
 ```
-### 从源码构建
-```shell
+
+从源码构建：
+
+```sh
 git clone https://github.com/zdz1715/pzip.git
-
 cd pzip
-
 make release-snapshot
 ```
-二进制包会生成在 `dist` 目录下。
 
-## 测试
-- **操作系统**：Ubuntu 20.04
-- **CPU**：Intel(R) Xeon(R) Gold 6254 CPU @ 3.10GHz（16核）
-- **内存**：16GB
-- **测试文件大小**：23GB
+构建产物会输出到 `dist/` 目录。
+
+## 命令行使用
+常用参数：
+
+```text
+pzip:
+  -r, --recursive          递归压缩目录
+  -q, --quiet              静默模式
+  -x, --exclude pattern    排除匹配条目
+  -i, --include pattern    只包含匹配条目
+  -z, --comment text       写入 ZIP 注释
+      --strip-prefix path  去除压缩包内路径前缀
+      --concurrency n      并发数
+      --level n            压缩级别，范围 -2 到 9
+      --stdlib             使用标准库 deflate
+      --no-dereference     将符号链接保存为链接
+
+punzip:
+  -d, --dir path           解压目录
+  -l, --list               查看文件列表
+  -z, --display-comment    显示 ZIP 注释
+  -q, --quiet              静默模式
+  -x, --exclude pattern    排除匹配条目
+  -i, --include pattern    只解压匹配条目
+      --concurrency n      并发数
+```
+
+## Go API
+
+压缩到 ZIP 文件：
+
+```go
+err := pzip.Compress(ctx, "archive.zip", &pzip.CompressOptions{
+    Sources:     []string{"dir", "README.md"},
+    Recursive:   true,
+    StripPrefix: "dir",
+    Filter:      pzip.NewFilter(nil, []string{"**/*.log"}),
+    Comment:     "release files",
+})
+```
+
+压缩到 `io.Writer`：
+
+```go
+err := pzip.CompressToWriter(ctx, w, &pzip.CompressOptions{
+    Sources:   []string{"dir"},
+    Recursive: true,
+})
+```
+
+解压 ZIP：
+
+```go
+err := pzip.Extract(ctx, "archive.zip", &pzip.ExtractOptions{
+    Destination: "output",
+    Filter:      pzip.NewFilter([]string{"**/*.yaml"}, nil),
+})
+```
+
+读取 ZIP 注释：
+
+```go
+comment, err := pzip.Comment("archive.zip")
+```
+
+打开 ZIP reader：
+
+```go
+reader, err := pzip.OpenReader("archive.zip")
+if err != nil {
+    return err
+}
+defer reader.Close()
+
+for _, f := range reader.File {
+    fmt.Println(f.Name)
+}
+```
+
+## 匹配规则
+
+过滤规则匹配 ZIP entry name，路径分隔符使用 `/`。
+
+示例：
+
+```text
+*.go
+**/*.go
+dir/**
+**/testdata/**
+```
+
+同时设置 include 和 exclude 时，条目必须匹配 include，并且不能匹配 exclude。
+
+## 性能测试
+
+以下数据来自历史测试，实际结果会受 CPU、磁盘、文件类型和并发数影响。
+
+测试环境：
+
+- 操作系统：Ubuntu 20.04
+- CPU：Intel(R) Xeon(R) Gold 6254 CPU @ 3.10GHz（16 核）
+- 内存：16GB
+- 测试文件大小：23GB
 
 ### SSD硬盘
 
@@ -133,3 +232,7 @@ sys     7m9.020s
 - [Bug: "only DEFLATED entries can have EXT descriptor" · Issue #131 · zeroturnaround/zt-zip](https://github.com/zeroturnaround/zt-zip/issues/131)
 - [[JDK-8327690] Unzipping Dropbox Files: Only DEFLATED entries can have EXT descriptor - Java Bug System](https://bugs.openjdk.org/browse/JDK-8327690)
 - [zip files created with archive/zip aren't recognised as zip files by java.util.zip](https://groups.google.com/g/golang-nuts/c/0iae5Ng-I-0)
+
+## 参考
+
+- [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)

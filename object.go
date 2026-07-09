@@ -24,8 +24,6 @@ const (
 	overflowPrefix = "pzip-overflow"
 )
 
-var DefaultObjectPool = NewObjectPool()
-
 type Object struct {
 	Root string
 	Path string
@@ -40,36 +38,35 @@ type Object struct {
 	link            string
 }
 
-type ObjectPool struct {
-	pool *sync.Pool
+type objectPool struct {
+	pool sync.Pool
 }
 
-func NewObjectPoolSize(bufSize int64) *ObjectPool {
-	return &ObjectPool{
-		pool: &sync.Pool{
+func newObjectPool() *objectPool {
+	return &objectPool{
+		pool: sync.Pool{
 			New: func() any {
 				return &Object{
-					compressedData: bytes.NewBuffer(make([]byte, bufSize)),
+					compressedData: newObjectBuffer(),
 				}
 			},
 		},
 	}
 }
 
-func NewObjectPool() *ObjectPool {
-	return NewObjectPoolSize(defaultBufSize)
+func (p *objectPool) Get() *Object {
+	return p.pool.Get().(*Object)
 }
 
-func (o *ObjectPool) New(path string, info os.FileInfo, level int, fw ...flate.NewWriterFunc) (*Object, error) {
-	obj := o.pool.Get().(*Object)
-	return obj, obj.Reset(path, info, level, fw...)
+func (p *objectPool) Put(obj *Object) {
+	p.pool.Put(obj)
 }
 
-func (o *ObjectPool) Put(obj *Object) {
-	o.pool.Put(obj)
+func newObjectBuffer() *bytes.Buffer {
+	return bytes.NewBuffer(make([]byte, defaultBufSize))
 }
 
-func (o *Object) Reset(path string, info os.FileInfo, level int, fw ...flate.NewWriterFunc) error {
+func (o *Object) Reset(path string, info os.FileInfo, level int, fw ...CompressorFactory) error {
 	if path == "" || info == nil {
 		return errors.New("invalid path or info")
 	}
@@ -99,7 +96,7 @@ func (o *Object) Reset(path string, info os.FileInfo, level int, fw ...flate.New
 		if len(fw) > 0 && fw[0] != nil {
 			o.compressor, err = fw[0](o, level)
 		} else {
-			o.compressor, err = flate.NewFastWriter(o, level)
+			o.compressor, err = flate.NewWriter(o, level)
 		}
 		if err != nil {
 			return err
@@ -291,7 +288,7 @@ func (o *Object) store() error {
 	return nil
 }
 
-func (o *Object) Archive(w *Writer) error {
+func (o *Object) WriteTo(w *Writer) error {
 	cw, err := w.CreateRaw(o.header)
 	if err != nil {
 		return fmt.Errorf("create raw for %q: %w", o.Path, err)
@@ -354,13 +351,6 @@ func (o *Object) Close() error {
 
 func IsSymlink(mode fs.FileMode) bool {
 	return mode&os.ModeSymlink != 0
-}
-
-func validLevel(level int) error {
-	if level < -2 || level > 9 {
-		return fmt.Errorf("invalid compression level %d: want value in range [-2, 9]", level)
-	}
-	return nil
 }
 
 // compressedFormats is a (non-exhaustive) set of lowercased

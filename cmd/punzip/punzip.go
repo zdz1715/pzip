@@ -67,7 +67,7 @@ func NewUnzipCommand(ctx context.Context) *cobra.Command {
 
 func RunUnZip(ctx context.Context, opts *Options, name string) error {
 	if opts.DisplayComment {
-		comment, err := pzip.GetComment(name)
+		comment, err := pzip.Comment(name)
 		if err != nil {
 			return err
 		}
@@ -84,12 +84,8 @@ func RunUnZip(ctx context.Context, opts *Options, name string) error {
 		return printList(os.Stdout, name, reader)
 	}
 
-	before := func(path string, r *pzip.ReadCloser) {
-		_, _ = fmt.Fprintf(os.Stdout, "Archive: %s\n", path)
-		_, _ = fmt.Fprintf(os.Stdout, "Comment: %s\n", r.Comment)
-	}
-
-	after := func(f *pzip.File, target *pzip.ExtractTarget) {
+	progress := func(event pzip.ExtractEvent) {
+		f := event.File
 		md := "extracting"
 		if f.FileInfo().IsDir() {
 			md = "creating"
@@ -103,23 +99,26 @@ func RunUnZip(ctx context.Context, opts *Options, name string) error {
 			md = "symlinking"
 		}
 
-		_, _ = fmt.Fprintf(os.Stdout, "  %s: %s\n", md, target)
+		_, _ = fmt.Fprintf(os.Stdout, "  %s: %s\n", md, event.Target)
 	}
 
 	if opts.Quiet {
-		before = nil
-		after = nil
+		progress = nil
+	} else {
+		reader, err := pzip.OpenReader(name)
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Archive: %s\n", name)
+		_, _ = fmt.Fprintf(os.Stdout, "Comment: %s\n", reader.Comment)
+		_ = reader.Close()
 	}
 
 	return pzip.Extract(ctx, name, &pzip.ExtractOptions{
 		Concurrency: opts.Concurrency,
-		Before:      before,
-		After:       after,
-		OutDir:      opts.Dir,
-		SkipPath: pzip.SkipPath{
-			Includes: opts.Includes,
-			Excludes: opts.Excludes,
-		},
+		Destination: opts.Dir,
+		Filter:      pzip.NewFilter(opts.Includes, opts.Excludes),
+		Progress:    progress,
 	})
 }
 
