@@ -6,7 +6,7 @@
     "dockerfile": "Dockerfile",
     "args": {
       "JDK_VERSION": "11.0.24_8-jdk",
-      "GO_VERSION": "1.22.6",
+      "GO_VERSION": "1.24.13",
     }
   },
   "workspaceFolder": "/workspace/pzip-test-java",
