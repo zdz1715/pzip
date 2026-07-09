@@ -25,6 +25,7 @@ type Options struct {
 	Includes      []string
 	Concurrency   int
 	Comment       string
+	StripPrefix   string
 	Level         int
 }
 
@@ -38,6 +39,7 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 	flags.StringSliceVarP(&o.Excludes, "exclude", "x", o.Excludes, "排除匹配的文件，支持多个排除规则，如：-x '*.log' -x '*.tmp'")
 	flags.StringSliceVarP(&o.Includes, "include", "i", o.Includes, "仅包含匹配的文件，支持多个包含规则，如：-i '*.yaml' -i 'README.md'")
 	flags.StringVarP(&o.Comment, "comment", "z", "", "为整个 ZIP 文件添加注释")
+	flags.StringVar(&o.StripPrefix, "strip-prefix", "", "从压缩包内路径中去除指定前缀，如：--strip-prefix a/b")
 }
 
 func NewPzipCommand(ctx context.Context) *cobra.Command {
@@ -82,28 +84,30 @@ func RunZip(ctx context.Context, opts *Options, name string, paths []string) err
 	}
 
 	wf := func(w io.Writer, level int) (flate.Writer, error) {
-		return flate.NewFastWriter(w, level)
+		return flate.NewWriter(w, level)
 	}
 
 	if opts.Stdlib {
 		wf = func(w io.Writer, level int) (flate.Writer, error) {
-			return flate.NewWriter(w, level)
+			return flate.NewStdlibWriter(w, level)
 		}
 	}
 
-	return pzip.Archive(ctx, name, &pzip.ArchiveOptions{
-		NewCompressor: wf,
-		Concurrency:   opts.Concurrency,
-		Files:         paths,
-		SkipPath: pzip.SkipPath{
-			Includes: opts.Includes,
-			Excludes: opts.Excludes,
+	return pzip.Compress(ctx, name, &pzip.CompressOptions{
+		Compressor:  wf,
+		Concurrency: opts.Concurrency,
+		Sources:     paths,
+		StripPrefix: opts.StripPrefix,
+		Filter:      pzip.NewFilter(opts.Includes, opts.Excludes),
+		Progress: func(event pzip.CompressEvent) {
+			if after != nil {
+				after(event.Header)
+			}
 		},
-		After:       after,
-		Dereference: !opts.NoDereference,
+		FollowLinks: !opts.NoDereference,
 		Level:       opts.Level,
 		Comment:     opts.Comment,
-		Recurse:     opts.Recursive,
+		Recursive:   opts.Recursive,
 	})
 }
 

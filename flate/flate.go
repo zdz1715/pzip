@@ -1,8 +1,9 @@
 package flate
 
 import (
-	"compress/flate"
 	"io"
+
+	stdflate "compress/flate"
 
 	fastflate "github.com/klauspost/compress/flate"
 )
@@ -14,8 +15,13 @@ import (
 
 //type Writer = flate.Writer
 
-var NewWriter = flate.NewWriter
-var NewFastWriter = fastflate.NewWriter
+var NewStdlibWriter = func(w io.Writer, level int) (Writer, error) {
+	return stdflate.NewWriter(w, level)
+}
+
+var NewWriter = func(w io.Writer, level int) (Writer, error) {
+	return fastflate.NewWriter(w, level)
+}
 
 type Writer interface {
 	Write(data []byte) (n int, err error)
@@ -23,5 +29,3 @@ type Writer interface {
 	Flush() error
 	Close() error
 }
-
-type NewWriterFunc func(w io.Writer, level int) (Writer, error)
