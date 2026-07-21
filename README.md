@@ -69,7 +69,7 @@ err := pzip.Compress(ctx, "archive.zip", &pzip.CompressOptions{
     Recursive:   true,
     StripPrefix: "dir",
     AddPrefix:   "release",
-    Filter:      pzip.NewFilter(nil, []string{"**/*.log"}),
+    Filter:      pzip.NewFilter(nil, []string{"*.log"}),
     Comment:     "release files",
 })
 ```
@@ -88,7 +88,7 @@ err := pzip.CompressToWriter(ctx, w, &pzip.CompressOptions{
 ```go
 err := pzip.Extract(ctx, "archive.zip", &pzip.ExtractOptions{
     Destination: "output",
-    Filter:      pzip.NewFilter([]string{"**/*.yaml"}, nil),
+    Filter:      pzip.NewFilter([]string{"*.yaml"}, nil),
 })
 ```
 
@@ -122,10 +122,12 @@ for _, f := range reader.File {
 
 ```text
 *.go
-**/*.go
-dir/**
-**/testdata/**
+dir/*
+testdata/*
+*.{go,md}
 ```
+
+匹配语义兼容 Info-ZIP：`*` 和 `?` 默认可以匹配路径分隔符 `/`。例如，`*.go` 会匹配任意目录层级中的 Go 文件。命令行中的模式需要使用引号，避免被 shell 提前展开，如 `-i '*.go'`。
 
 同时设置 include 和 exclude 时，条目必须匹配 include，并且不能匹配 exclude。
 

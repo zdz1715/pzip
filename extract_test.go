@@ -80,7 +80,7 @@ func TestExtractFilesAndFilter(t *testing.T) {
 	err = Extract(context.Background(), archive, &ExtractOptions{
 		Destination: out,
 		Concurrency: 2,
-		Filter:      NewFilter([]string{"**/*.txt", "**/*.md"}, []string{"**/*.log"}),
+		Filter:      NewFilter([]string{"*.txt", "*.md"}, []string{"*.log"}),
 	})
 	if err != nil {
 		t.Fatal(err)
