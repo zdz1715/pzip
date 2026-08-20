@@ -43,6 +43,7 @@ pzip:
   -i, --include pattern    只包含匹配条目
   -z, --comment text       写入 ZIP 注释
       --strip-prefix path  去除压缩包内路径前缀
+      --strip-components n  去除压缩包内路径前置层级（与 --strip-prefix 互斥）
       --add-prefix path    增加压缩包内路径前缀
       --concurrency n      并发数
       --level n            压缩级别，范围 -2 到 9
@@ -56,6 +57,8 @@ punzip:
   -q, --quiet              静默模式
   -x, --exclude pattern    排除匹配条目
   -i, --include pattern    只解压匹配条目
+      --strip-prefix path  去除压缩包内路径前缀
+      --strip-components n  去除压缩包内路径前置层级（与 --strip-prefix 互斥）
       --concurrency n      并发数
 ```
 
@@ -68,6 +71,8 @@ err := pzip.Compress(ctx, "archive.zip", &pzip.CompressOptions{
     Sources:     []string{"dir", "README.md"},
     Recursive:   true,
     StripPrefix: "dir",
+    // StripComponents 与 StripPrefix 二选一。
+    // StripComponents: 1,
     AddPrefix:   "release",
     Filter:      pzip.NewFilter(nil, []string{"*.log"}),
     Comment:     "release files",
@@ -88,6 +93,8 @@ err := pzip.CompressToWriter(ctx, w, &pzip.CompressOptions{
 ```go
 err := pzip.Extract(ctx, "archive.zip", &pzip.ExtractOptions{
     Destination: "output",
+    // StripPrefix 与 StripComponents 二选一。
+    // StripComponents: 1,
     Filter:      pzip.NewFilter([]string{"*.yaml"}, nil),
 })
 ```

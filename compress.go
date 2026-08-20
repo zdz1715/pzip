@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -23,17 +24,18 @@ type CompressEvent struct {
 }
 
 type CompressOptions struct {
-	Sources     []string
-	StripPrefix string
-	AddPrefix   string
-	Concurrency int
-	Level       int
-	Comment     string
-	Recursive   bool
-	FollowLinks bool
-	Filter      Filter
-	Compressor  CompressorFactory
-	Progress    func(CompressEvent)
+	Sources         []string
+	StripPrefix     string
+	StripComponents int
+	AddPrefix       string
+	Concurrency     int
+	Level           int
+	Comment         string
+	Recursive       bool
+	FollowLinks     bool
+	Filter          Filter
+	Compressor      CompressorFactory
+	Progress        func(CompressEvent)
 }
 
 type compressConfig struct {
@@ -54,6 +56,9 @@ func (o *CompressOptions) validate() error {
 	}
 	if len(o.Sources) == 0 {
 		return errors.New("no sources to compress")
+	}
+	if err := validateStripOptions(o.StripPrefix, o.StripComponents); err != nil {
+		return err
 	}
 	return validLevel(o.Level)
 }
@@ -340,11 +345,11 @@ func (cfg *compressConfig) emitPathAs(sourcePath, displayPath string, info fs.Fi
 	})
 }
 
-func (cfg *compressConfig) entryName(path string) (string, bool, error) {
-	path = filepath.Clean(path)
+func (cfg *compressConfig) entryName(sourcePath string) (string, bool, error) {
+	sourcePath = filepath.Clean(sourcePath)
 	if cfg.StripPrefix != "" {
 		prefix := filepath.Clean(cfg.StripPrefix)
-		rel, err := filepath.Rel(prefix, path)
+		rel, err := filepath.Rel(prefix, sourcePath)
 		if err != nil {
 			return "", false, err
 		}
@@ -352,13 +357,22 @@ func (cfg *compressConfig) entryName(path string) (string, bool, error) {
 			return "", false, nil
 		}
 		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return "", false, fmt.Errorf("%q is not under strip prefix %q", path, cfg.StripPrefix)
+			return "", false, fmt.Errorf("%q is not under strip prefix %q", sourcePath, cfg.StripPrefix)
 		}
-		path = rel
+		sourcePath = rel
+	}
+
+	name := HeaderName(sourcePath)
+	if cfg.StripComponents > 0 {
+		var ok bool
+		name, ok = stripArchivePath(name, "", cfg.StripComponents)
+		if !ok {
+			return "", false, nil
+		}
 	}
 	if cfg.AddPrefix != "" {
-		path = filepath.Join(filepath.Clean(cfg.AddPrefix), path)
+		name = path.Join(path.Clean(filepath.ToSlash(cfg.AddPrefix)), name)
 	}
-	name := HeaderName(path)
+	name = HeaderName(name)
 	return name, name != "" && name != ".", nil
 }

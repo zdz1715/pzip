@@ -17,17 +17,18 @@ import (
 )
 
 type Options struct {
-	Recursive     bool
-	NoDereference bool
-	Stdlib        bool
-	Quiet         bool
-	Excludes      []string
-	Includes      []string
-	Concurrency   int
-	Comment       string
-	StripPrefix   string
-	AddPrefix     string
-	Level         int
+	Recursive       bool
+	NoDereference   bool
+	Stdlib          bool
+	Quiet           bool
+	Excludes        []string
+	Includes        []string
+	Concurrency     int
+	Comment         string
+	StripPrefix     string
+	StripComponents int
+	AddPrefix       string
+	Level           int
 }
 
 func (o *Options) addFlags(flags *pflag.FlagSet) {
@@ -41,6 +42,7 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 	flags.StringSliceVarP(&o.Includes, "include", "i", o.Includes, "仅包含匹配的文件，支持多个包含规则，如：-i '*.yaml' -i 'README.md'")
 	flags.StringVarP(&o.Comment, "comment", "z", "", "为整个 ZIP 文件添加注释")
 	flags.StringVar(&o.StripPrefix, "strip-prefix", "", "从压缩包内路径中去除指定前缀，如：--strip-prefix a/b")
+	flags.IntVar(&o.StripComponents, "strip-components", 0, "从压缩包内路径中去除指定数量的前置路径层级")
 	flags.StringVar(&o.AddPrefix, "add-prefix", "", "为压缩包内路径增加指定前缀，如：--add-prefix release")
 }
 
@@ -69,6 +71,7 @@ func NewPzipCommand(ctx context.Context) *cobra.Command {
 		},
 	}
 	opts.addFlags(cmd.Flags())
+	cmd.MarkFlagsMutuallyExclusive("strip-prefix", "strip-components")
 	return cmd
 }
 
@@ -96,12 +99,13 @@ func RunZip(ctx context.Context, opts *Options, name string, paths []string) err
 	}
 
 	return pzip.Compress(ctx, name, &pzip.CompressOptions{
-		Compressor:  wf,
-		Concurrency: opts.Concurrency,
-		Sources:     paths,
-		StripPrefix: opts.StripPrefix,
-		AddPrefix:   opts.AddPrefix,
-		Filter:      pzip.NewFilter(opts.Includes, opts.Excludes),
+		Compressor:      wf,
+		Concurrency:     opts.Concurrency,
+		Sources:         paths,
+		StripPrefix:     opts.StripPrefix,
+		StripComponents: opts.StripComponents,
+		AddPrefix:       opts.AddPrefix,
+		Filter:          pzip.NewFilter(opts.Includes, opts.Excludes),
 		Progress: func(event pzip.CompressEvent) {
 			if after != nil {
 				after(event.Header)

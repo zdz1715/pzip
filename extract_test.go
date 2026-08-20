@@ -3,6 +3,7 @@ package pzip
 import (
 	"archive/zip"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -118,14 +119,99 @@ func TestExtractRejectsZipSlip(t *testing.T) {
 
 	out := filepath.Join(root, "out")
 	err = Extract(context.Background(), archive, &ExtractOptions{
-		Destination: out,
-		Concurrency: 1,
+		Destination:     out,
+		StripComponents: 1,
+		Concurrency:     1,
 	})
 	if err == nil {
 		t.Fatal("expected zip slip error")
 	}
 	if _, statErr := os.Stat(filepath.Join(root, "evil.txt")); !os.IsNotExist(statErr) {
 		t.Fatalf("evil.txt exists or stat failed unexpectedly: %v", statErr)
+	}
+}
+
+func TestExtractStripPrefix(t *testing.T) {
+	root := t.TempDir()
+	archive := filepath.Join(root, "prefix.zip")
+	writeTestZip(t, archive, map[string]string{
+		"release/bin/app":        "app",
+		"release/etc/config.ini": "config",
+		"release-old/keep.txt":   "keep",
+	})
+
+	out := filepath.Join(root, "out")
+	if err := Extract(context.Background(), archive, &ExtractOptions{
+		Destination: out,
+		StripPrefix: "release",
+		Concurrency: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	assertFileContent(t, filepath.Join(out, "bin", "app"), "app")
+	assertFileContent(t, filepath.Join(out, "etc", "config.ini"), "config")
+	if _, err := os.Stat(filepath.Join(out, "release-old")); !os.IsNotExist(err) {
+		t.Fatalf("release-old exists or stat failed unexpectedly: %v", err)
+	}
+}
+
+func TestExtractStripComponents(t *testing.T) {
+	root := t.TempDir()
+	archive := filepath.Join(root, "components.zip")
+	writeTestZip(t, archive, map[string]string{
+		"release/bin/app": "app",
+		"release/README":  "readme",
+		"top-level.txt":   "skip",
+	})
+
+	out := filepath.Join(root, "out")
+	if err := Extract(context.Background(), archive, &ExtractOptions{
+		Destination:     out,
+		StripComponents: 1,
+		Concurrency:     1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	assertFileContent(t, filepath.Join(out, "bin", "app"), "app")
+	assertFileContent(t, filepath.Join(out, "README"), "readme")
+	if _, err := os.Stat(filepath.Join(out, "top-level.txt")); !os.IsNotExist(err) {
+		t.Fatalf("top-level.txt exists or stat failed unexpectedly: %v", err)
+	}
+}
+
+func TestExtractRejectsConflictingStripOptions(t *testing.T) {
+	err := (&ExtractOptions{
+		StripPrefix:     "release",
+		StripComponents: 1,
+	}).validate()
+	if err == nil {
+		t.Fatal("expected conflicting strip options error")
+	}
+}
+
+func writeTestZip(t *testing.T, archive string, entries map[string]string) {
+	t.Helper()
+	f, err := os.Create(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(f)
+	for name, content := range entries {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(w, content); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 

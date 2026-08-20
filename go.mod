@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/gobwas/glob v0.2.3
-	github.com/klauspost/compress v1.19.1
+	github.com/klauspost/compress v1.19.2
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9

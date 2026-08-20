@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -35,15 +36,26 @@ type ExtractEvent struct {
 }
 
 type ExtractOptions struct {
-	Destination string
-	Concurrency int
-	Filter      Filter
-	Progress    func(ExtractEvent)
+	Destination     string
+	StripPrefix     string
+	StripComponents int
+	Concurrency     int
+	Filter          Filter
+	Progress        func(ExtractEvent)
 }
 
 func (o *ExtractOptions) validate() error {
 	if o == nil {
 		return errors.New("extract options must not be nil")
+	}
+	if err := validateStripOptions(o.StripPrefix, o.StripComponents); err != nil {
+		return err
+	}
+	if o.StripPrefix != "" {
+		prefix := path.Clean(o.StripPrefix)
+		if prefix == "." || path.IsAbs(prefix) || prefix == ".." || strings.HasPrefix(prefix, "../") {
+			return fmt.Errorf("invalid strip prefix %q", o.StripPrefix)
+		}
 	}
 	if o.Concurrency <= 0 {
 		o.Concurrency = runtime.GOMAXPROCS(0)
@@ -51,8 +63,8 @@ func (o *ExtractOptions) validate() error {
 	return nil
 }
 
-func (o *ExtractOptions) extractFile(file *File) (target *ExtractTarget, err error) {
-	targetPath, err := o.targetPath(file.Name)
+func (o *ExtractOptions) extractFile(file *File, name string) (target *ExtractTarget, err error) {
+	targetPath, err := o.targetPath(name)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +113,14 @@ func (o *ExtractOptions) targetPath(name string) (string, error) {
 		return "", fmt.Errorf("unsafe zip entry path %q", name)
 	}
 	return target, nil
+}
+
+func (o *ExtractOptions) entryName(name string) (string, bool, error) {
+	if _, err := o.targetPath(name); err != nil {
+		return "", false, err
+	}
+	returnName, ok := stripArchivePath(name, o.StripPrefix, o.StripComponents)
+	return returnName, ok, nil
 }
 
 func (o *ExtractOptions) writeLink(outputPath string, file *File) (string, error) {
@@ -184,6 +204,13 @@ func Extract(ctx context.Context, path string, opts *ExtractOptions) error {
 	g.SetLimit(opts.Concurrency)
 
 	for _, f := range reader.File {
+		name, ok, err := opts.entryName(f.Name)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
 		if !opts.Filter.Accept(f.Name) {
 			continue
 		}
@@ -192,7 +219,7 @@ func Extract(ctx context.Context, path string, opts *ExtractOptions) error {
 			if err := gctx.Err(); err != nil {
 				return err
 			}
-			t, extractErr := opts.extractFile(f)
+			t, extractErr := opts.extractFile(f, name)
 			if extractErr != nil {
 				return extractErr
 			}

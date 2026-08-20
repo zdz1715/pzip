@@ -22,12 +22,14 @@ import (
 type Options struct {
 	Concurrency int
 
-	List           bool
-	DisplayComment bool
-	Quiet          bool
-	Dir            string
-	Includes       []string
-	Excludes       []string
+	List            bool
+	DisplayComment  bool
+	Quiet           bool
+	Dir             string
+	Includes        []string
+	Excludes        []string
+	StripPrefix     string
+	StripComponents int
 }
 
 func (o *Options) addFlags(flags *pflag.FlagSet) {
@@ -38,6 +40,8 @@ func (o *Options) addFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.List, "list", "l", false, "列出压缩包内的文件清单")
 	flags.StringSliceVarP(&o.Excludes, "exclude", "x", o.Excludes, "排除匹配的文件，支持多个排除规则，如：-x '*.log' -x '*.tmp'")
 	flags.StringSliceVarP(&o.Includes, "include", "i", o.Includes, "仅解压匹配的文件，支持多个包含规则，如：-i '*.yaml'，-i 'README.md'")
+	flags.StringVar(&o.StripPrefix, "strip-prefix", "", "从压缩包内路径中去除指定前缀，如：--strip-prefix release")
+	flags.IntVar(&o.StripComponents, "strip-components", 0, "从压缩包内路径中去除指定数量的前置路径层级")
 }
 
 func NewUnzipCommand(ctx context.Context) *cobra.Command {
@@ -62,6 +66,7 @@ func NewUnzipCommand(ctx context.Context) *cobra.Command {
 		},
 	}
 	opts.addFlags(cmd.Flags())
+	cmd.MarkFlagsMutuallyExclusive("strip-prefix", "strip-components")
 	return cmd
 }
 
@@ -115,10 +120,12 @@ func RunUnZip(ctx context.Context, opts *Options, name string) error {
 	}
 
 	return pzip.Extract(ctx, name, &pzip.ExtractOptions{
-		Concurrency: opts.Concurrency,
-		Destination: opts.Dir,
-		Filter:      pzip.NewFilter(opts.Includes, opts.Excludes),
-		Progress:    progress,
+		Concurrency:     opts.Concurrency,
+		Destination:     opts.Dir,
+		StripPrefix:     opts.StripPrefix,
+		StripComponents: opts.StripComponents,
+		Filter:          pzip.NewFilter(opts.Includes, opts.Excludes),
+		Progress:        progress,
 	})
 }
 
